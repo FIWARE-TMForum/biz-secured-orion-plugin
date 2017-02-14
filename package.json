@@ -1,0 +1,29 @@
+{
+  "name": "Orion Query",
+  "author": "fdelavega",
+  "version": "1.0",
+  "module": "orion_plugin.OrionPlugin",
+  "media_types": ["NGSI9", "NGSI10"],
+  "formats": ["URL"],
+  "overrides": [],
+  "form": {
+    "tenant": {
+      "type": "text",
+      "label": "FIWARE Service",
+      "placeholder": "FIWARE Service",
+      "mandatory": true
+    },
+    "service": {
+      "type": "text",
+      "label": "FIWARE Service Path",
+      "placeholder": "FIWARE Service Path",
+      "mandatory": true
+    },
+    "role": {
+      "type": "text",
+      "label": "Offered Role",
+      "placeholder": "Offered Role",
+      "mandatory": true
+    }
+  }
+}
