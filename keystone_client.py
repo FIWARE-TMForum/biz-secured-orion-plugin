@@ -31,7 +31,7 @@ class KeystoneClient:
 
     def __init__(self, user, password, domain, protocol, host, port=5000):
         self._domain = domain
-        self._server = protocol + '://' + host + ':' + port
+        self._server = protocol + '://' + host + ':' + unicode(port)
         self._access_token = self._login(user, password)
 
     def _login(self, user, password):

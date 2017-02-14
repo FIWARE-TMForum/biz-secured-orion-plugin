@@ -66,7 +66,7 @@ class OrionPlugin(Plugin):
             for project in service_info['projects']:
                 domain_info = keystone_client.get_domain_by_id(project['domain_id'])
 
-                if domain_info['name'].lower() == asset.meta_info['tenant'].lower():
+                if domain_info['domain']['name'].lower() == asset.meta_info['tenant'].lower():
                     # Save the project id and domain id to used then in future requests
                     project_id = project['id']
                     domain_id = project['domain_id']
