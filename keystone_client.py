@@ -84,9 +84,6 @@ class KeystoneClient:
     def get_user_by_name(self, username):
         return self._make_get_request(self._server + '/v3/users?name=' + username)
 
-    def check_role(self, project_id, user_id, role_id):
-        return self._make_get_request(self._server + '/v3/projects/' + project_id + '/users/' + user_id + '/roles/' + role_id)
-
     def _make_role_request(self, project_id, user_id, role_id, method):
         url = self._server + '/v3/projects/' + project_id + '/users/' + user_id + '/roles/' + role_id
         resp = method(url, headers={
@@ -94,6 +91,9 @@ class KeystoneClient:
         })
 
         resp.raise_for_status()
+
+    def check_role(self, project_id, user_id, role_id):
+        self._make_role_request(project_id, user_id, role_id, requests.get)
 
     def grant_role(self, project_id, user_id, role_id):
         self._make_role_request(project_id, user_id, role_id, requests.put)
