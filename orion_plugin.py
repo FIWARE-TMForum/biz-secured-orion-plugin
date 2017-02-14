@@ -76,7 +76,7 @@ class OrionPlugin(Plugin):
 
             # Check that the provided role exists (The SCIM plugin is being used so the project role is done by
             # composing it with the project id)
-            role_info = keystone_client.get_role_by_name(quote_plus(project_id + '#' + asset.meta_info['role']))
+            role_info = keystone_client.get_role_by_name(quote_plus(domain_id + '#' + asset.meta_info['role']))
 
             if not len(role_info['roles']):
                 raise ObjectDoesNotExist('The role' + asset.meta_info['role'] + ' is not defined for service path ' + asset.meta_info['service'])
@@ -85,7 +85,7 @@ class OrionPlugin(Plugin):
 
             provider_id = self._get_user_id(keystone_client, provider.name)
 
-            seller_role_info = keystone_client.get_role_by_name(quote_plus(project_id + '#' + SELLER_ROLE))
+            seller_role_info = keystone_client.get_role_by_name(quote_plus(domain_id + '#' + SELLER_ROLE))
 
             if not len(seller_role_info['roles']):
                 raise PluginError(
@@ -144,5 +144,5 @@ class OrionPlugin(Plugin):
             # Remove the role from the user
             keystone_client.revoke_role(asset.meta_info['project_id'], customer_id, asset.meta_info['role_id'])
 
-        except HTTPError as e:
+        except HTTPError:
             raise PluginError('It has not been possible to connect with Keystone')
