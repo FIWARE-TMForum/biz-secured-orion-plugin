@@ -23,10 +23,13 @@ The secured orion plugin requires to be configured by providing the following fi
 
 To install the plugin, the first thing that you must do is to compress it in a ZIP file. To do so, you can run the following command:
 
+```
 zip secured-orion.zip package.json orion_plugin.py keystone_client.py config.py
+```
 
 Then, go the src directory included in the folder used to install the Business Ecosystem Charging Backend, and run the following command:
 
+```
 ./manage.py loadplugin <PATH_TO_THE_ZIP_FILE>
-
+```
 
