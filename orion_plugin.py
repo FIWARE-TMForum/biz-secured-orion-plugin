@@ -36,14 +36,15 @@ from .keystone_client import KeystoneClient
 
 class OrionPlugin(Plugin):
 
-    def _get_user_id(self, keystone_client, username):
+    def _get_user_id(self, keystone_client, domain_id, username):
         # Get provider and seller role ids
-        user_info = keystone_client.get_user_by_name(username)
+        users = keystone_client.get_user_by_name(username)
+        user_info = [user for user in users['users'] if user['domain_id'] == domain_id]
 
-        if not len(user_info['users']):
+        if not len(user_info):
             raise PluginError('Your user is not registered in the underlying Keystone instance')
 
-        return user_info['users'][0]['id']
+        return user_info[0]['id']
 
     def on_post_product_spec_validation(self, provider, asset):
         # Extract related information from the asset
@@ -83,7 +84,7 @@ class OrionPlugin(Plugin):
 
             role_id = role_info['roles'][0]['id']
 
-            provider_id = self._get_user_id(keystone_client, provider.name)
+            provider_id = self._get_user_id(keystone_client, domain_id, provider.name)
 
             seller_role_info = keystone_client.get_role_by_name(quote_plus(domain_id + '#' + SELLER_ROLE))
 
@@ -121,7 +122,7 @@ class OrionPlugin(Plugin):
             keystone_client = KeystoneClient(KEYSTONE_USER, KEYSTONE_PWD, ADMIN_DOMAIN, parsed_url.scheme, parsed_url.hostname)
 
             # Check the customer user
-            customer_id = self._get_user_id(keystone_client, order.owner_organization.name)
+            customer_id = self._get_user_id(keystone_client, asset.meta_info['domain_id'], order.owner_organization.name)
 
             # Give the user the new role
             keystone_client.grant_role(asset.meta_info['project_id'], customer_id, asset.meta_info['role_id'])
@@ -139,7 +140,7 @@ class OrionPlugin(Plugin):
             keystone_client = KeystoneClient(KEYSTONE_USER, KEYSTONE_PWD, ADMIN_DOMAIN, parsed_url.scheme, parsed_url.hostname)
 
             # Check the customer user
-            customer_id = self._get_user_id(keystone_client, order.owner_organization.name)
+            customer_id = self._get_user_id(keystone_client, asset.meta_info['domain_id'], order.owner_organization.name)
 
             # Remove the role from the user
             keystone_client.revoke_role(asset.meta_info['project_id'], customer_id, asset.meta_info['role_id'])
