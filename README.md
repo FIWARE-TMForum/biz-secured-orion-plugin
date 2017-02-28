@@ -6,7 +6,7 @@ The main feature of this plugin is managing Keystone roles, so when customers aq
 
 This plugin defines three metadata fields that must be provided when creating Business API Ecosystem product specs. In particular, it requires:
 
-* *tenant* (labeled as FIWARE Service): Tenant (Keystone domain) where the offered CB services belongs
+* *tenant* (labeled as FIWARE Service): Tenant (Keystone domain) where the offered CB services belong
 * *service* (labeled as FIWARE Service path): Service path (Keystone project) where the offered CB services belong
 * *role*: Role to be granted to customers that acquire the involved assets
 
