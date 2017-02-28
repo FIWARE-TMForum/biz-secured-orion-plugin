@@ -20,11 +20,13 @@
 
 from __future__ import unicode_literals
 
+import requests
 from requests.exceptions import HTTPError
 from urlparse import urlparse
 from urllib import quote_plus
 
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.conf import settings
 
 from wstore.asset_manager.resource_plugins.plugin import Plugin
 from wstore.asset_manager.resource_plugins.plugin_error import PluginError
@@ -45,6 +47,26 @@ class OrionPlugin(Plugin):
             raise PluginError('Your user is not registered in the underlying Keystone instance')
 
         return user_info[0]['id']
+
+    def _generate_api_key(self, parsed_url):
+        proxy_admin_url = parsed_url.scheme + '://' + parsed_url.netloc
+        authorize_url = settings.AUTHORIZE_SERVICE
+
+        # Generate an API key using the authorization service
+        resp = requests.post(authorize_url, json={
+            'url': proxy_admin_url
+        })
+
+        if resp.status_code != 201:
+            raise PluginError('Error generating an API key')
+
+        # Send the API key to the proxy using the accounting administration service
+        acc_resp = requests.post(proxy_admin_url + '/accounting/token', json={
+            'apiKey': resp.json()['apiKey']
+        })
+
+        if acc_resp.status_code != 201:
+            raise PluginError('The accounting service has failed saving the API key')
 
     def on_post_product_spec_validation(self, provider, asset):
         # Extract related information from the asset
@@ -108,11 +130,55 @@ class OrionPlugin(Plugin):
             else:
                 raise PluginError('It has not been possible to connect with Keystone')
 
+        # Generate an API Key for accounting Info
+        self._generate_api_key(parsed_url)
+
         # Save related metadata to avoid future requests
         asset.meta_info['project_id'] = project_id
         asset.meta_info['domain_id'] = domain_id
         asset.meta_info['role_id'] = role_id
         asset.save()
+
+    def on_post_product_offering_validation(self, asset, product_offering):
+        # Parse the pricing models to check usage models
+        provided_usage = [price_model['unitsOfMeasure']
+                          for price_model in product_offering['productOfferingPrice']
+                          if price_model['priceType'].lower() == 'usage'] if 'productOfferingPrice' in product_offering else []
+
+        if provided_usage:
+            # Get the valid models
+            parsed_url = urlparse(asset.get_url())
+            units_service = parsed_url.scheme + '://' + parsed_url.netloc + '/accounting/units'
+
+            resp = requests.get(units_service)
+            valid_units = resp.json()
+
+            # Check that all usage models are supported
+            for model in provided_usage:
+                if model not in valid_units['units']:
+                    raise PluginError('The usage model ' + model + ' is not supported by the accounting service')
+
+    def _notify_accounting(self, asset, order, contract, type_):
+        parsed_url = urlparse(asset.download_link)
+        notification = {
+            'orderId': unicode(order.order_id),
+            'productId': unicode(contract.product_id),
+        }
+
+        if type_ == 'add':
+            notification['customer'] = order.customer.username
+            notification['acquisition'] = {
+                'roleId': asset.meta_info['role_id'],
+                'domain': asset.meta_info['tenant'],
+                'servicePath': asset.meta_info['service'],
+                'unit': [price_model['unit'] for price_model in contract.pricing_model['pay_per_use']][0]
+            }
+
+        url = parsed_url.scheme + '://' + parsed_url.netloc + '/accounting/acquisitions/' + type_
+
+        resp = requests.post(url, json=notification)
+        if resp.status_code != 201:
+            raise PluginError('Error notifying the product acquisition to the accounting server')
 
     def on_product_acquisition(self, asset, contract, order):
         # Extract related information from the asset
@@ -133,6 +199,10 @@ class OrionPlugin(Plugin):
             else:
                 raise PluginError('It has not been possible to connect with Keystone')
 
+        # If the model is usage, send usage notification
+        if 'pay_per_use' in contract.pricing_model:
+            self._notify_accounting(asset, order, contract, 'add')
+
     def on_product_suspension(self, asset, contract, order):
         parsed_url = urlparse(asset.download_link)
 
@@ -147,3 +217,7 @@ class OrionPlugin(Plugin):
 
         except HTTPError:
             raise PluginError('It has not been possible to connect with Keystone')
+
+        # If the model is usage, send usage notification
+        if 'pay_per_use' in contract.pricing_model:
+            self._notify_accounting(asset, order, contract, 'remove')
